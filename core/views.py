@@ -1,11 +1,15 @@
 from django.contrib import messages
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 
-from .forms import ContactForm
+from .forms import ContactForm, ProductModelForm
+from .models import Product
 
 
 def index(request):
-    return render(request, 'index.html')
+    context = {
+        'products': Product.objects.all()
+    }
+    return render(request, 'index.html', context)
 
 
 def contact(request):
@@ -13,17 +17,7 @@ def contact(request):
 
     if str(request.method) == 'POST':
         if form.is_valid():
-            name = form.cleaned_data['name']
-            email = form.cleaned_data['email']
-            subject = form.cleaned_data['subject']
-            message = form.cleaned_data['message']
-
-            print('Message send successful')
-            print(f'Name: {name}')
-            print(f'Email: {email}')
-            print(f'Subject: {subject}')
-            print(f'Message: {message}')
-
+            form.send_mail()
             messages.success(request, 'Email send success')
             form = ContactForm()
         else:
@@ -36,4 +30,20 @@ def contact(request):
 
 
 def product(request):
-    return render(request, 'product.html')
+    if str(request.user) != 'AnonymousUser':
+        if str(request.method) == 'POST':
+            form = ProductModelForm(request.POST, request.FILES)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Product saved successeful')
+                form = ProductModelForm()
+            else:
+                messages.error(request, 'Error in saved this product')
+        else:
+            form = ProductModelForm()
+        context = {
+            'form': form
+        }
+        return render(request, 'product.html', context)
+    else:
+        return redirect('index')
